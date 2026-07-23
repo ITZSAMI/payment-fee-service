@@ -1,0 +1,22 @@
+type Invoice {
+    id: ID!
+    transactionId: ID!
+    grossAmount: Float!
+    feeAmount: Float!
+    netAmount: Float!
+    generatedAt: String!
+}
+
+type Transaction {
+    id: ID!
+    merchantId: String!
+    amount: Float!
+    currency: String!
+    status: String!
+    createdAt: String!
+}
+
+type Query {
+    invoice(id: ID!): Invoice
+    transaction(id: ID!): Transaction
+}

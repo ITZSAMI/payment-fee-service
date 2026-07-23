@@ -1,0 +1,38 @@
+package com.sami.paymentservice.service
+
+import com.sami.paymentservice.exception.InvoiceNotFoundException
+import com.sami.paymentservice.model.Invoice
+import com.sami.paymentservice.repository.InvoiceRepository
+import org.springframework.stereotype.Service
+import java.util.UUID
+
+@Service
+class InvoiceService(
+    private val invoiceRepository: InvoiceRepository,
+    private val transactionService: TransactionService,
+    private val feeCalculatorService: FeeCalculatorService
+) {
+
+    fun generateInvoice(transactionId: UUID): Invoice {
+        val transaction = transactionService.getTransaction(transactionId)
+
+        val feeAmount = feeCalculatorService.calculateFee(transaction.amount)
+        val netAmount = transaction.amount.subtract(feeAmount)
+
+        val invoice = Invoice(
+            transactionId = transaction.id,
+            grossAmount = transaction.amount,
+            feeAmount = feeAmount,
+            netAmount = netAmount
+        )
+
+        return invoiceRepository.save(invoice)
+    }
+
+    fun getInvoice(id: UUID): Invoice =
+        invoiceRepository.findById(id)
+            .orElseThrow { InvoiceNotFoundException(id) }
+
+    fun getInvoiceByTransaction(transactionId: UUID): Invoice? =
+        invoiceRepository.findByTransactionId(transactionId)
+}
