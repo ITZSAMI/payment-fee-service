@@ -11,3 +11,7 @@ class InvoiceNotFoundException(id: UUID) :
 
 class InvoiceAlreadyExistsException(transactionId: UUID) :
     RuntimeException("Invoice already exists for transaction: $transactionId")
+
+
+class InvalidTransactionStateException(message: String) :
+    RuntimeException(message)

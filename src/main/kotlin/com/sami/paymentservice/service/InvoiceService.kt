@@ -2,6 +2,8 @@ package com.sami.paymentservice.service
 
 import com.sami.paymentservice.exception.InvoiceNotFoundException
 import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
+import com.sami.paymentservice.exception.InvalidTransactionStateException
+import com.sami.paymentservice.model.TransactionStatus
 import com.sami.paymentservice.model.Invoice
 import com.sami.paymentservice.repository.InvoiceRepository
 import org.springframework.stereotype.Service
@@ -16,6 +18,12 @@ class InvoiceService(
 
     fun generateInvoice(transactionId: UUID): Invoice {
         val transaction = transactionService.getTransaction(transactionId)
+
+        if (transaction.status != TransactionStatus.COMPLETED) {
+            throw InvalidTransactionStateException(
+                "Transaction $transactionId cannot be invoiced: status is ${transaction.status}"
+            )
+        }
 
         if (invoiceRepository.findByTransactionId(transactionId) != null) {
             throw InvoiceAlreadyExistsException(transactionId)

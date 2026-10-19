@@ -2,6 +2,7 @@ package com.sami.paymentservice.service
 
 import com.sami.paymentservice.dto.CreateTransactionRequest
 import com.sami.paymentservice.exception.TransactionNotFoundException
+import com.sami.paymentservice.exception.InvalidTransactionStateException
 import com.sami.paymentservice.model.Transaction
 import com.sami.paymentservice.model.TransactionStatus
 import com.sami.paymentservice.repository.TransactionRepository
@@ -29,6 +30,11 @@ class TransactionService(
 
     fun markCompleted(id: UUID): Transaction {
         val transaction = getTransaction(id)
+        if (transaction.status != TransactionStatus.PENDING) {
+            throw InvalidTransactionStateException(
+                "Transaction $id cannot be completed: status is ${transaction.status}"
+            )
+        }
         transaction.status = TransactionStatus.COMPLETED
         return transactionRepository.save(transaction)
     }

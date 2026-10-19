@@ -40,8 +40,8 @@ class GlobalExceptionHandler {
         )
     
 
-    @ExceptionHandler(InvoiceAlreadyExistsException::class)
-    fun handleConflict(ex: InvoiceAlreadyExistsException): ResponseEntity<ErrorResponse> =
+    @ExceptionHandler(InvoiceAlreadyExistsException::class, InvalidTransactionStateException::class)
+    fun handleConflict(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.CONFLICT).body(
             ErrorResponse(HttpStatus.CONFLICT.value(), "Conflict", ex.message)
         )

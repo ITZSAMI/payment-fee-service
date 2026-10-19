@@ -1,8 +1,10 @@
 package com.sami.paymentservice.service
 
+import com.sami.paymentservice.exception.InvalidTransactionStateException
 import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
 import com.sami.paymentservice.model.Invoice
 import com.sami.paymentservice.model.Transaction
+import com.sami.paymentservice.model.TransactionStatus
 import com.sami.paymentservice.repository.InvoiceRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -27,13 +29,16 @@ class InvoiceServiceTest {
         invoiceService = InvoiceService(invoiceRepository, transactionService, feeCalculatorService)
     }
 
+    private fun transactionWithStatus(status: TransactionStatus) = Transaction(
+        merchantId = "merchant-1",
+        amount = BigDecimal("500.00"),
+        currency = "EUR",
+        status = status
+    )
+
     @Test
     fun `generateInvoice calculates fee and net amount from transaction`() {
-        val transaction = Transaction(
-            merchantId = "merchant-1",
-            amount = BigDecimal("500.00"),
-            currency = "EUR"
-        )
+        val transaction = transactionWithStatus(TransactionStatus.COMPLETED)
         every { transactionService.getTransaction(transaction.id) } returns transaction
         every { invoiceRepository.findByTransactionId(transaction.id) } returns null
 
@@ -51,11 +56,7 @@ class InvoiceServiceTest {
 
     @Test
     fun `generateInvoice throws if an invoice already exists for the transaction`() {
-        val transaction = Transaction(
-            merchantId = "merchant-1",
-            amount = BigDecimal("500.00"),
-            currency = "EUR"
-        )
+        val transaction = transactionWithStatus(TransactionStatus.COMPLETED)
         val existingInvoice = Invoice(
             transactionId = transaction.id,
             grossAmount = BigDecimal("500.00"),
@@ -66,6 +67,18 @@ class InvoiceServiceTest {
         every { invoiceRepository.findByTransactionId(transaction.id) } returns existingInvoice
 
         assertThrows(InvoiceAlreadyExistsException::class.java) {
+            invoiceService.generateInvoice(transaction.id)
+        }
+
+        verify(exactly = 0) { invoiceRepository.save(any()) }
+    }
+
+    @Test
+    fun `generateInvoice throws if the transaction is not completed`() {
+        val transaction = transactionWithStatus(TransactionStatus.PENDING)
+        every { transactionService.getTransaction(transaction.id) } returns transaction
+
+        assertThrows(InvalidTransactionStateException::class.java) {
             invoiceService.generateInvoice(transaction.id)
         }
 
