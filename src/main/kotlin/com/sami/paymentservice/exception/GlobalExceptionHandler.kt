@@ -1,5 +1,6 @@
 package com.sami.paymentservice.exception
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -38,11 +39,25 @@ class GlobalExceptionHandler {
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.message)
         )
-    
 
     @ExceptionHandler(InvoiceAlreadyExistsException::class, InvalidTransactionStateException::class)
     fun handleConflict(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(HttpStatus.CONFLICT).body(
             ErrorResponse(HttpStatus.CONFLICT.value(), "Conflict", ex.message)
+        )
+
+    /**
+     * Raised by the database when a unique constraint is broken, e.g. two
+     * concurrent requests both trying to invoice the same transaction.
+     * The service-level check catches the normal case; this catches the race.
+     */
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "Conflict",
+                "Request conflicts with existing data"
+            )
         )
 }

@@ -1,12 +1,13 @@
 package com.sami.paymentservice.service
 
 import com.sami.paymentservice.dto.CreateTransactionRequest
-import com.sami.paymentservice.exception.TransactionNotFoundException
 import com.sami.paymentservice.exception.InvalidTransactionStateException
+import com.sami.paymentservice.exception.TransactionNotFoundException
 import com.sami.paymentservice.model.Transaction
 import com.sami.paymentservice.model.TransactionStatus
 import com.sami.paymentservice.repository.TransactionRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
@@ -14,6 +15,7 @@ class TransactionService(
     private val transactionRepository: TransactionRepository
 ) {
 
+    @Transactional
     fun createTransaction(request: CreateTransactionRequest): Transaction {
         val transaction = Transaction(
             merchantId = request.merchantId,
@@ -25,9 +27,12 @@ class TransactionService(
     }
 
     fun getTransaction(id: UUID): Transaction =
-        transactionRepository.findById(id)
-            .orElseThrow { TransactionNotFoundException(id) }
+        findTransaction(id) ?: throw TransactionNotFoundException(id)
 
+    fun findTransaction(id: UUID): Transaction? =
+        transactionRepository.findById(id).orElse(null)
+
+    @Transactional
     fun markCompleted(id: UUID): Transaction {
         val transaction = getTransaction(id)
         if (transaction.status != TransactionStatus.PENDING) {

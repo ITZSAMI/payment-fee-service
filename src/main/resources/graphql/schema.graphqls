@@ -1,22 +1,26 @@
+# Money amounts are exposed as String (e.g. "492.20") rather than Float,
+# because Float is a binary double and cannot represent decimals exactly.
 type Invoice {
     id: ID!
     transactionId: ID!
-    grossAmount: Float!
-    feeAmount: Float!
-    netAmount: Float!
+    grossAmount: String!
+    feeAmount: String!
+    netAmount: String!
     generatedAt: String!
 }
 
 type Transaction {
     id: ID!
     merchantId: String!
-    amount: Float!
+    amount: String!
     currency: String!
     status: String!
     createdAt: String!
 }
 
 type Query {
+    # Returns null if no invoice exists with this id.
     invoice(id: ID!): Invoice
+    # Returns null if no transaction exists with this id.
     transaction(id: ID!): Transaction
 }

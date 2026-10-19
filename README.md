@@ -47,16 +47,30 @@ fee, similar to common card-processor pricing models:
 ...plus a flat **€0.30** fee per transaction. This is the most heavily tested
 part of the codebase — see `FeeCalculatorServiceTest`.
 
+The minimum transaction amount is **€0.50**, so the flat fee can never exceed
+the payment itself. Amounts may have at most 2 decimal places, and currencies
+must be 3-letter uppercase ISO codes (e.g. `EUR`).
+
+## Business rules
+
+Transactions follow a simple state machine:
+
+```
+PENDING ──→ COMPLETED
+   └──────→ FAILED
+```
+
+- Only a `PENDING` transaction can be completed.
+- Only a `COMPLETED` transaction can be invoiced, and only once. Duplicate
+  invoices are blocked both in the service layer and by a unique database
+  constraint (which also covers concurrent requests).
+
+Errors use a consistent JSON shape: `400` for invalid input, `404` for unknown
+ids, `409` for state conflicts (e.g. invoicing twice).
+
 ## Running locally
 
-> **First-time setup:** this repo ships `gradle/wrapper/gradle-wrapper.properties`
-> but not the wrapper scripts/jar (binary files don't transfer well outside a
-> real Gradle run). If you have Gradle installed locally, generate them once with:
-> ```bash
-> gradle wrapper --gradle-version 8.9
-> ```
-> After that, use `./gradlew` as shown below. Alternatively, just use a
-> locally installed Gradle directly (`gradle bootRun` instead of `./gradlew bootRun`).
+Requires Java 17+. The Gradle wrapper is included, so no Gradle install is needed.
 
 ### Option 1 — plain Gradle (uses in-memory H2, zero setup)
 
@@ -69,8 +83,13 @@ App runs on `http://localhost:8080`. H2 console available at `/h2-console`.
 ### Option 2 — Docker Compose (app + PostgreSQL)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
+
+The app waits for PostgreSQL's health check before starting. Database
+credentials default to local dev values and can be overridden with the
+`POSTGRES_USER` / `POSTGRES_PASSWORD` environment variables. The H2 console
+and GraphiQL are disabled in this profile.
 
 ## Example requests
 
@@ -81,12 +100,17 @@ curl -X POST http://localhost:8080/transactions \
   -d '{"merchantId": "merchant-1", "amount": 500.00, "currency": "EUR"}'
 ```
 
+**Mark it as completed** (only completed transactions can be invoiced)
+```bash
+curl -X POST http://localhost:8080/transactions/{id}/complete
+```
+
 **Generate an invoice for it**
 ```bash
 curl -X POST http://localhost:8080/transactions/{id}/invoice
 ```
 
-**GraphQL query** (via `/graphiql` or `POST /graphql`)
+**GraphQL query** (via `/graphiql` or `POST /graphql`; returns `null` for unknown ids)
 ```graphql
 query {
   invoice(id: "...") {
@@ -104,8 +128,11 @@ query {
 ```
 
 Unit tests cover:
-- `FeeCalculatorService` — all tiers, edge cases, invalid input (parameterized tests)
-- `InvoiceService` — mocked dependencies via MockK, verifying correct fee/net calculation and persistence calls
+- `FeeCalculatorService` — all tiers, the minimum amount boundary, invalid input (parameterized tests)
+- `InvoiceService` — fee/net calculation, duplicate-invoice and status rules, using MockK
+- `TransactionService` — allowed and rejected status transitions
+- `GraphQLController` — results and `null` for unknown ids
+- `CreateTransactionRequest` — validation of amount and currency
 
 ## Infrastructure (Terraform)
 

@@ -9,6 +9,11 @@ import org.springframework.graphql.data.method.annotation.QueryMapping
 import org.springframework.stereotype.Controller
 import java.util.UUID
 
+/**
+ * GraphQL queries. In GraphQL, "not found" is expressed as a null result
+ * (the schema fields are nullable), not as an error, so these use the
+ * find* service methods instead of the throwing get* ones.
+ */
 @Controller
 class GraphQLController(
     private val invoiceService: InvoiceService,
@@ -17,9 +22,9 @@ class GraphQLController(
 
     @QueryMapping
     fun invoice(@Argument id: UUID): InvoiceResponse? =
-        invoiceService.getInvoice(id).let { InvoiceResponse.from(it) }
+        invoiceService.findInvoice(id)?.let { InvoiceResponse.from(it) }
 
     @QueryMapping
     fun transaction(@Argument id: UUID): TransactionResponse? =
-        transactionService.getTransaction(id).let { TransactionResponse.from(it) }
+        transactionService.findTransaction(id)?.let { TransactionResponse.from(it) }
 }

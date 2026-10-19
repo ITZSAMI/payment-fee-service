@@ -37,9 +37,18 @@ spring:
   datasource:
     url: jdbc:postgresql://db:5432/paymentdb
     driver-class-name: org.postgresql.Driver
-    username: payment_user
-    password: payment_pass
+    # Read from environment variables (set in docker-compose.yml),
+    # falling back to the local dev defaults.
+    username: ${DB_USERNAME:payment_user}
+    password: ${DB_PASSWORD:payment_pass}
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: false
+  # Dev-only tools: off in the Postgres profile.
+  h2:
+    console:
+      enabled: false
+  graphql:
+    graphiql:
+      enabled: false

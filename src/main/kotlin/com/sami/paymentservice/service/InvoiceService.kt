@@ -1,12 +1,13 @@
 package com.sami.paymentservice.service
 
-import com.sami.paymentservice.exception.InvoiceNotFoundException
-import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
 import com.sami.paymentservice.exception.InvalidTransactionStateException
-import com.sami.paymentservice.model.TransactionStatus
+import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
+import com.sami.paymentservice.exception.InvoiceNotFoundException
 import com.sami.paymentservice.model.Invoice
+import com.sami.paymentservice.model.TransactionStatus
 import com.sami.paymentservice.repository.InvoiceRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
 @Service
@@ -16,6 +17,7 @@ class InvoiceService(
     private val feeCalculatorService: FeeCalculatorService
 ) {
 
+    @Transactional
     fun generateInvoice(transactionId: UUID): Invoice {
         val transaction = transactionService.getTransaction(transactionId)
 
@@ -29,22 +31,21 @@ class InvoiceService(
             throw InvoiceAlreadyExistsException(transactionId)
         }
 
-        val feeAmount = feeCalculatorService.calculateFee(transaction.amount)
-        val netAmount = transaction.amount.subtract(feeAmount)
-
         val invoice = Invoice(
             transactionId = transaction.id,
             grossAmount = transaction.amount,
-            feeAmount = feeAmount,
-            netAmount = netAmount
+            feeAmount = feeCalculatorService.calculateFee(transaction.amount),
+            netAmount = feeCalculatorService.calculateNetAmount(transaction.amount)
         )
 
         return invoiceRepository.save(invoice)
     }
 
     fun getInvoice(id: UUID): Invoice =
-        invoiceRepository.findById(id)
-            .orElseThrow { InvoiceNotFoundException(id) }
+        findInvoice(id) ?: throw InvoiceNotFoundException(id)
+
+    fun findInvoice(id: UUID): Invoice? =
+        invoiceRepository.findById(id).orElse(null)
 
     fun getInvoiceByTransaction(transactionId: UUID): Invoice? =
         invoiceRepository.findByTransactionId(transactionId)
