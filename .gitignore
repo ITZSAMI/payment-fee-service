@@ -20,3 +20,4 @@ terraform/.terraform.lock.hcl
 ### Misc ###
 .DS_Store
 *.log
+bin/
