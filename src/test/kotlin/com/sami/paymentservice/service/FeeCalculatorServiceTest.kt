@@ -54,4 +54,18 @@ class FeeCalculatorServiceTest {
 
         assertEquals(amount.subtract(fee), net)
     }
+
+    @Test
+    fun `calculateFee accepts the minimum amount and leaves a positive net`() {
+        val amount = BigDecimal("0.50")
+        assertEquals(BigDecimal("0.31"), feeCalculatorService.calculateFee(amount))
+        assertEquals(BigDecimal("0.19"), feeCalculatorService.calculateNetAmount(amount))
+    }
+
+    @Test
+    fun `calculateFee throws below the minimum amount`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            feeCalculatorService.calculateFee(BigDecimal("0.49"))
+        }
+    }
 }

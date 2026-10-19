@@ -9,7 +9,7 @@ data class CreateTransactionRequest(
     @field:NotBlank(message = "merchantId is required")
     val merchantId: String,
 
-    @field:DecimalMin(value = "0.01", message = "amount must be greater than zero")
+    @field:DecimalMin(value = "0.50", message = "amount must be at least 0.50")
     val amount: BigDecimal,
 
     @field:NotBlank

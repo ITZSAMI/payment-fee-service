@@ -21,6 +21,10 @@ import java.math.RoundingMode
 @Service
 class FeeCalculatorService {
 
+    companion object {
+        val MINIMUM_AMOUNT = BigDecimal("0.50")
+    }
+
     private val tieredRule = FeeRule.Tiered(
         brackets = listOf(
             FeeRule.Tiered.Bracket(upperBound = BigDecimal("100"), rate = BigDecimal("0.020")),
@@ -36,7 +40,7 @@ class FeeCalculatorService {
      * rounded to 2 decimal places using standard half-up rounding.
      */
     fun calculateFee(amount: BigDecimal): BigDecimal {
-        require(amount > BigDecimal.ZERO) { "Amount must be positive" }
+        require(amount >= MINIMUM_AMOUNT) { "Amount must be at least $MINIMUM_AMOUNT" }
 
         val percentageFee = tieredRule.calculate(amount)
         val total = percentageFee.add(flatFee.calculate(amount))
