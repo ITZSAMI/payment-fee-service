@@ -7,3 +7,7 @@ class TransactionNotFoundException(id: UUID) :
 
 class InvoiceNotFoundException(id: UUID) :
     RuntimeException("Invoice not found: $id")
+
+
+class InvoiceAlreadyExistsException(transactionId: UUID) :
+    RuntimeException("Invoice already exists for transaction: $transactionId")

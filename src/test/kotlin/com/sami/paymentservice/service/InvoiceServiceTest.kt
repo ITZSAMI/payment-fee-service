@@ -1,11 +1,14 @@
 package com.sami.paymentservice.service
 
+import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
+import com.sami.paymentservice.model.Invoice
 import com.sami.paymentservice.model.Transaction
 import com.sami.paymentservice.repository.InvoiceRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -32,8 +35,9 @@ class InvoiceServiceTest {
             currency = "EUR"
         )
         every { transactionService.getTransaction(transaction.id) } returns transaction
+        every { invoiceRepository.findByTransactionId(transaction.id) } returns null
 
-        val savedInvoiceSlot = slot<com.sami.paymentservice.model.Invoice>()
+        val savedInvoiceSlot = slot<Invoice>()
         every { invoiceRepository.save(capture(savedInvoiceSlot)) } answers { savedInvoiceSlot.captured }
 
         val result = invoiceService.generateInvoice(transaction.id)
@@ -43,5 +47,28 @@ class InvoiceServiceTest {
         assertEquals(BigDecimal("492.20"), result.netAmount)
 
         verify(exactly = 1) { invoiceRepository.save(any()) }
+    }
+
+    @Test
+    fun `generateInvoice throws if an invoice already exists for the transaction`() {
+        val transaction = Transaction(
+            merchantId = "merchant-1",
+            amount = BigDecimal("500.00"),
+            currency = "EUR"
+        )
+        val existingInvoice = Invoice(
+            transactionId = transaction.id,
+            grossAmount = BigDecimal("500.00"),
+            feeAmount = BigDecimal("7.80"),
+            netAmount = BigDecimal("492.20")
+        )
+        every { transactionService.getTransaction(transaction.id) } returns transaction
+        every { invoiceRepository.findByTransactionId(transaction.id) } returns existingInvoice
+
+        assertThrows(InvoiceAlreadyExistsException::class.java) {
+            invoiceService.generateInvoice(transaction.id)
+        }
+
+        verify(exactly = 0) { invoiceRepository.save(any()) }
     }
 }

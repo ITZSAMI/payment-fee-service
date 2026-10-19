@@ -11,7 +11,7 @@ data class Invoice(
     @Id
     val id: UUID = UUID.randomUUID(),
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     val transactionId: UUID,
 
     @Column(nullable = false, precision = 19, scale = 4)

@@ -38,4 +38,11 @@ class GlobalExceptionHandler {
         ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
             ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.message)
         )
+    
+
+    @ExceptionHandler(InvoiceAlreadyExistsException::class)
+    fun handleConflict(ex: InvoiceAlreadyExistsException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.CONFLICT).body(
+            ErrorResponse(HttpStatus.CONFLICT.value(), "Conflict", ex.message)
+        )
 }

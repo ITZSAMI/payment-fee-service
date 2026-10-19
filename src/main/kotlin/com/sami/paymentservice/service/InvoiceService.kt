@@ -1,6 +1,7 @@
 package com.sami.paymentservice.service
 
 import com.sami.paymentservice.exception.InvoiceNotFoundException
+import com.sami.paymentservice.exception.InvoiceAlreadyExistsException
 import com.sami.paymentservice.model.Invoice
 import com.sami.paymentservice.repository.InvoiceRepository
 import org.springframework.stereotype.Service
@@ -15,6 +16,10 @@ class InvoiceService(
 
     fun generateInvoice(transactionId: UUID): Invoice {
         val transaction = transactionService.getTransaction(transactionId)
+
+        if (invoiceRepository.findByTransactionId(transactionId) != null) {
+            throw InvoiceAlreadyExistsException(transactionId)
+        }
 
         val feeAmount = feeCalculatorService.calculateFee(transaction.amount)
         val netAmount = transaction.amount.subtract(feeAmount)
