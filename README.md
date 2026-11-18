@@ -5,7 +5,8 @@ fintech backend team maintains: transactions come in, fees are calculated
 using tiered business rules, and invoices are generated from the result.
 
 Built with **Kotlin + Spring Boot**, exposing both **REST** and **GraphQL**
-APIs, containerized with **Docker**, and provisioned on **AWS via Terraform**.
+APIs, containerized with **Docker**, with its **AWS** infrastructure
+(S3, ECR) defined in **Terraform**.
 
 ## Why this project
 
@@ -38,14 +39,20 @@ Client
 `FeeCalculatorService` applies a tiered percentage fee plus a flat per-transaction
 fee, similar to common card-processor pricing models:
 
-| Amount            | Rate  |
-|--------------------|-------|
-| < €100             | 2.0%  |
-| €100 – €1000       | 1.5%  |
-| > €1000            | 1.0%  |
+| Amount               | Rate  |
+|----------------------|-------|
+| below €100           | 2.0%  |
+| €100 to €999.99      | 1.5%  |
+| €1000 and above      | 1.0%  |
 
-...plus a flat **€0.30** fee per transaction. This is the most heavily tested
-part of the codebase — see `FeeCalculatorServiceTest`.
+...plus a flat **€0.30** fee per transaction. The total fee is rounded to
+2 decimal places (half-up), and the net amount is gross minus fee. This is
+the most heavily tested part of the codebase — see `FeeCalculatorServiceTest`.
+
+The tier rate applies to the **whole** amount, not just the part above each
+threshold (unlike income-tax brackets). That keeps the rule simple for
+merchants to read, but it creates a step at each boundary: a €999.99
+transaction pays €15.30 in fees, while a €1000.00 one pays €10.30.
 
 The minimum transaction amount is **€0.50**, so the flat fee can never exceed
 the payment itself. Amounts may have at most 2 decimal places, and currencies
@@ -57,7 +64,7 @@ Transactions follow a simple state machine:
 
 ```
 PENDING ──→ COMPLETED
-   └──────→ FAILED
+   └──────→ FAILED   (status defined; no API endpoint sets it yet)
 ```
 
 - Only a `PENDING` transaction can be completed.
@@ -154,9 +161,22 @@ terraform plan
 Kotlin · Spring Boot · Spring Data JPA · Spring GraphQL · PostgreSQL · H2 ·
 Docker · Docker Compose · Terraform · AWS (S3, ECR) · JUnit 5 · MockK
 
+## Known limitations
+
+- Fee rules are defined in EUR, but any 3-letter currency code is accepted,
+  and invoices don't store a currency yet.
+- `FAILED` exists as a status, but there is no endpoint to fail a transaction.
+- Status changes have no optimistic locking (`@Version`), so two concurrent
+  requests on the same transaction could both read `PENDING`.
+- The schema is created by Hibernate (`ddl-auto: update`) rather than
+  versioned migrations.
+
 ## Possible next steps
 
+- Restrict currencies to `EUR` (or add per-currency fee rules) and store the
+  currency on each invoice
+- `POST /transactions/{id}/fail` endpoint, with optimistic locking on status changes
+- Versioned schema migrations with Flyway
 - Idempotency keys on transaction creation
 - Webhook notifications on invoice generation
-- Currency conversion support
 - CI pipeline (GitHub Actions) running tests + Docker build on push
